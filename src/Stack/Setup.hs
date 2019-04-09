@@ -87,7 +87,7 @@ import              Stack.Build.Target (NeedTargets(..), parseTargets)
 import              Stack.Config (loadConfig, loadBuildConfig)
 import              Stack.Constants
 import              Stack.Constants.Config (distRelativeDir)
-import              Stack.GhcPkg (createDatabase, getCabalPkgVer, getGlobalDB, mkGhcPackagePath, ghcPkgPathEnvVar)
+import              Stack.GhcPkg (createDatabase, getGlobalDB, mkGhcPackagePath, ghcPkgPathEnvVar)
 import              Stack.Prelude hiding (Display (..))
 import              Stack.SourceMap
 import              Stack.Setup.Installed
@@ -722,7 +722,6 @@ pathsFromCompiler wc compilerBuild isSandboxed compiler = handleAny onErr $ do
 
     menv0 <- view processContextL
     menv <- mkProcessContext (removeHaskellEnvVars (view envVarsL menv0))
-    cabalPkgVer <- withProcessContext menv $ getCabalPkgVer pkg
 
     interpreter <- findHelper $
                    \case
@@ -775,6 +774,10 @@ pathsFromCompiler wc compilerBuild isSandboxed compiler = handleAny onErr $ do
         Right x -> pure x
 
     globalDump <- withProcessContext menv $ globalsFromDump pkg
+    cabalPkgVer <-
+      case Map.lookup cabalPackageName globalDump of
+        Nothing -> throwString $ "Cabal library not found in global package database for " ++ toFilePath compiler
+        Just dp -> pure $ pkgVersion $ dpPackageIdent dp
 
     return CompilerPaths
       { cpBuild = compilerBuild
